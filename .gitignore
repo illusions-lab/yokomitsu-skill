@@ -1,0 +1,56 @@
+# ─── OS / Editor ──────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Python (親プロジェクト bungo-skill 用の venv 等) ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ─── Node.js ──────────────────────────────
+node_modules/
+*.log
+.npm/
+.env
+.env.*
+!.env.example
+
+# ─── TypeScript ───────────────────────────
+*.tsbuildinfo
+
+# ─── Vite / vite-ssg ──────────────────────
+.vite/
+.vite-ssg-temp/
+
+
+# ─── Generator 出力（画像、印刷物 — 生成物のみ）──
+dist/
+
+# ─── Web ビルド出力 ───────────────────────
+# docs/ は GitHub Pages の配信元。docs/fonts/ はライセンス同梱のため手動管理、
+# それ以外のビルド成果物は Actions が再生成する。
+docs/index.html
+docs/assets/
+docs/.vite/
+docs/.vite-ssg-temp/
+docs/repository-open-graph.png
+docs/favicon.svg
+docs/portrait.jpg
+
+# ─── 作品集（著作権配慮、ユーザー持込）──
+sources/**
+!sources/portrait.*
+!sources/content/
+!sources/content/*.md
+
+# ─── 大型生データ ─────────────────────────
+references/research/stats.json.bak
+
+# ─── Agents（個別開発者の作業メモ）──
+AGENTS.md

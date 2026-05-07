@@ -1,0 +1,103 @@
+name: Deploy Web to Pages
+
+# generate/web/ は原則このリポに同梱された LP ソースを使う。
+# 必要な場合のみ WEB_SOURCE=owner/repo@ref で外部ソースを上書きできる。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'illusions-skill.yaml'
+      - 'README.md'
+      - 'generate/**'
+      - 'sources/**'
+  workflow_dispatch:
+    inputs:
+      web_source:
+        description: 'web source repo (owner/name@ref)。未指定時は repo Variable WEB_SOURCE を使用'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  # 任意: generate/web を別リポのソースで上書きしたいときだけ設定する
+  # 例: WEB_SOURCE=illusions-lab/skill-web@main
+  WEB_SOURCE: ${{ github.event.inputs.web_source || vars.WEB_SOURCE || '' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch web source
+        if: env.WEB_SOURCE != ''
+        run: |
+          REPO="${WEB_SOURCE%@*}"
+          REF="${WEB_SOURCE##*@}"
+          echo "Cloning $REPO @ $REF for web source"
+          git clone --depth 1 --branch "$REF" "https://github.com/${REPO}.git" /tmp/web-source
+          if [ ! -d /tmp/web-source/generate/web ]; then
+            echo "::error::generate/web/ directory not found in $REPO@$REF"
+            exit 1
+          fi
+          mkdir -p ./generate
+          cp -r /tmp/web-source/generate/web ./generate/web
+
+      - name: Verify web source exists
+        run: test -d generate/web
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: 'generate/web/.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: |
+            generate/package-lock.json
+            generate/web/package-lock.json
+
+      - name: Install generator dependencies
+        working-directory: generate
+        run: npm ci || npm install
+
+      - name: Generate OG image
+        working-directory: generate
+        run: node bin/skill-generator.js generate --only=og ../illusions-skill.yaml
+
+      - name: Install web dependencies
+        working-directory: generate/web
+        run: npm ci || npm install
+
+      - name: Build static site
+        working-directory: generate/web
+        run: npm run build
+
+      - name: Copy OG image to docs
+        run: |
+          if [ -f dist/og.png ]; then
+            cp dist/og.png docs/repository-open-graph.png
+          else
+            echo "::error::dist/og.png not found after generator run"
+            exit 1
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
